@@ -1,5 +1,3 @@
-context("Parameter Combinations")
-
 x1 <- c(
   "I", "P", "I", "NC", "UH", "I", "R", "UO",
   "I", "O", "P", "I", "R", "O", "P", "NE"
@@ -28,8 +26,8 @@ test_that("outcomerate should only work if 'e' is on the interval [0, 1]", {
   expect_error(outcomerate(x1, e = 1), NA)
 })
 
-test_that("outcomerate should not work if 'e' is not a scalar", {
-  msg <- "The parameter e must be a scalar value"
+test_that("a non-scalar 'e' must identify disposition categories", {
+  msg <- "A non-scalar e must be named"
   expect_error(outcomerate(x1, e = c(0.3, 0.5)), regexp = msg)
 })
 
@@ -38,7 +36,7 @@ test_that("outcomerate should fail if foreign dispositions are used", {
   expect_error(outcomerate(c("I", NA_character_)), regexp = msg)
 
   msg <- "Certain names in 'x' are not valid"
-  expect_error(outcomerate(c("I", "ABC"), e = .4), regexp = msg)
+  expect_error(outcomerate(c("I", "ABC"), e = 0.4), regexp = msg)
   expect_error(outcomerate(c(I = 4, ABC = 3, Z = 1)), regexp = msg)
 })
 
@@ -82,15 +80,29 @@ test_that("outcomerate should fail if 'x' is numeric and is unnamed", {
   expect_error(outcomerate(c(I = 5, 4)), regexp = msg2)
 })
 
-test_that("outcomerate weights should not include zeros or NAs", {
-  msg1 <- "weights contain contain zeros"
-  msg2 <- "weights must not contain NA values"
-  w1 <- w2 <- rnorm(length(x1), 5)
-  w1[1] <- 0
-  w2[1] <- NA
+test_that("outcomerate validates weights while permitting individual zeros", {
+  w <- rep(1, length(x1))
+  w[1] <- 0
 
-  expect_warning(outcomerate(x1, weight = w1), regexp = msg1)
-  expect_error(outcomerate(x1, weight = w2), regexp = msg2)
+  expect_warning(outcomerate(x1, weight = w), NA)
+  expect_error(
+    outcomerate(x1, weight = replace(w, 1, NA_real_)),
+    regexp = "weights must not contain NA values"
+  )
+  expect_error(
+    outcomerate(x1, weight = replace(w, 1, Inf)),
+    regexp = "weights must be finite"
+  )
+  expect_error(
+    outcomerate(x1, weight = replace(w, 1, -1)),
+    regexp = "weights must be non-negative"
+  )
+  expect_error(
+    outcomerate(x1, weight = as.character(w)),
+    regexp = "weights must be numeric"
+  )
+  expect_error(
+    outcomerate(x1, weight = rep(0, length(x1))),
+    regexp = "weights must not all be zero"
+  )
 })
-
-

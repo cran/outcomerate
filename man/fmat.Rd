@@ -6,13 +6,14 @@
 \title{outcomerate Formula Matrix (Internal Data)}
 \description{
 The \code{fmat} object is the internal dataset used by the \code{outcomerate} package.
-It holds all definitions for the outcome rates. With the exception of location
-rates, these are taken from the AAPOR Standard Definitions (2016).
+It holds all definitions for the outcome rates. With the exception of
+location rates, these are taken from the AAPOR Standard Definitions (2023).
 }
 \details{
 The data is a 3-dimensional binary array consisting of:
 \itemize{
-\item outcome: codes {I, P, R, NC, O, UH, UO, eUH, eUO, NE}
+\item outcome: codes \code{I}, \code{P}, \code{R}, \code{NC}, \code{O}, \code{UH}, \code{UR}, \code{UO}, \code{eUH},
+\code{eUR}, \code{eUO}, and \code{NE}
 \item rate: the shorthand name for the rate (e.g. RR1)
 \item side: numerator (NUM) and denominator (DEN)
 }
@@ -21,15 +22,16 @@ Given these three dimensions, each outcome rate can be defined as a rational
 number (i.e. a fraction) consisting of a summation of frequencies of
 outcome codes (where the matrix entries are nonzero).
 
-The input parameters given by the user are {I, P, R, NC, O, UH, UO} and
-the parameter 'e'. The parameter e is multiplied by {UH, UO} internally so as to
-produce {eUH, eUO}.
+The input parameters given by the user are \code{I}, \code{P}, \code{R}, \code{NC}, \code{O}, \code{UH},
+\code{UR}, \code{UO}, and \code{NE}. The scalar or category-specific values in \code{e} are
+multiplied by \code{UH}, \code{UR}, and \code{UO} internally to produce the estimated
+eligible counts \code{eUH}, \code{eUR}, and \code{eUO}.
 
 The reason for this implementation is:
 
 a) It conforms to a DRY (don't repeat yourself) philosophy by
-holding all definitions in one place. These definitions can be used as upstream
-inputs to functions/test suites requiring them.
+holding all definitions in one place. These definitions can be used as
+upstream inputs to functions/test suites requiring them.
 
 b) It makes it easier to use intermediate steps in the formula calculations.
 For instance, it may be of use to a researchers to want to obtain the
@@ -45,10 +47,10 @@ fmat <- outcomerate:::fmat
 # Print the dimensions
 dimnames(fmat)
 
-# Say we want to know the defintion of Response Rate 2, RR2. We see
+# Say we want to know the definition of Response Rate 2, RR2. We see
 # below that the numerator (NUM) column is defined by the entries with a 1,
 # or (I + P). Likewise, the denominator (DEN) is defined as
-# (I + P + R + NC + O + UH + UO)
+# (I + P + R + NC + O + UH + UR + UO)
 fmat[, "RR2", ]
 
 
@@ -58,7 +60,8 @@ fmat[, "RR2", ]
 N = fmat[ , , 1]
 D = fmat[ , , 2]
 x <- c(I = 5, P = 2, R = 1, NC = 7, O = 3,
-      UH = 4, UO = 8,  NE = 1, eUH = 3, eUO = 6)
+      UH = 4, UR = 2, UO = 8, NE = 1,
+      eUH = 3, eUR = 1.5, eUO = 6)
 
 # Return all rates
 (x \%*\% N) / (x \%*\% D)
@@ -69,6 +72,6 @@ numden <- apply(x * fmat, 2:3, sum)
 numden[, 1] / numden[, 2]
 }
 \references{
-\url{https://www.aapor.org/Standards-Ethics/Standard-Definitions-(1).aspx}
+\url{https://aapor.org/wp-content/uploads/2024/03/Standards-Definitions-10th-edition.pdf}
 }
 \keyword{data}

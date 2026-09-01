@@ -4,65 +4,107 @@
 \alias{outcomerate}
 \title{AAPOR Survey Outcome Rates}
 \usage{
-outcomerate(x, e = NULL, rate = NULL, weight = NULL,
-  return_nd = FALSE)
+outcomerate(x, e = NULL, rate = NULL, weight = NULL, return_nd = FALSE)
 }
 \arguments{
-\item{x}{a character vector of disposition outcomes (I, P, R, NC, O, UH, or
-UO). Alternatively, a named vector/table of (weighted) disposition counts.}
+\item{x}{a character vector of disposition outcomes (I, P, R, NC, O, UH, UR,
+UO, or NE). Alternatively, a named vector/table of (weighted) disposition
+counts.}
 
-\item{e}{a scalar number that specifies the eligibility rate (the estimated
-proportion of unknown cases which are eligible). A default method
-of calculating 'e' is provided by \code{\link[=eligibility_rate]{eligibility_rate()}}.}
+\item{e}{a numeric eligibility estimate in \verb{[0, 1]}. A length-one value is
+applied to all unknown dispositions. Alternatively, use a named vector
+such as \code{c(UH = 0.4, UR = 0.7, UO = 0.2)} for category-specific estimates.
+A non-scalar vector must contain one uniquely named value for every
+unknown category with a positive aggregate count (weighted when \code{weight}
+is supplied); categories with a zero count may be omitted.
+\code{\link[=eligibility_rate]{eligibility_rate()}} provides a default scalar estimate. If an
+\code{e}-dependent rate is explicitly requested when every unknown category has
+count zero, \code{e} may be omitted.}
 
 \item{rate}{an optional character vector specifying the rates to be
-calculated. If set to NA (the default), all rates are returned.}
+calculated. If \code{NULL} (the default), all rates available for the supplied
+value of \code{e} are returned.}
 
 \item{weight}{an optional numeric vector that specifies the weight of each
-element in 'x' if x is a character vector or factor. If none is provided (the
-default), an unweighted estimate is returned.}
+element in 'x' if x is a character vector or factor. For AAPOR weighted
+rates, use base weights (inverse selection probabilities); two-phase
+designs should also account for subsampling. If none is provided (the
+default), an unweighted estimate is returned. Individual zero weights are
+permitted, as required for phase-2-eligible cases that are not subsampled.
+Weights cannot be supplied with an already-aggregated named vector or
+table.}
 
 \item{return_nd}{a logical to switch to having the function return the
 numerator and denominator instead of the rate. Defaults to FALSE.}
 }
+\value{
+If \code{return_nd = FALSE}, a named numeric vector containing the
+requested outcome rates. If \code{return_nd = TRUE}, a numeric matrix with one
+row per requested rate and columns \code{NUM} and \code{DEN} containing its numerator
+and denominator. Names for weighted rates have a \code{w} suffix.
+}
 \description{
 Provides standardized outcome rates for surveys, primarily as defined by the
-\href{http://www.aapor.org/}{American Association for Public Opinion Research (AAPOR)}. Details can be
-found in the Standard Definitions manual \insertCite{aapor}{outcomerate}.
+\href{https://aapor.org/}{American Association for Public Opinion Research (AAPOR)}. Details can be found in the Standard
+Definitions manual \insertCite{aapor}{outcomerate}.
 }
 \details{
-Survey and public opinion research often categorizes interview attempts of
-of a survey according to a set of outcome codes as follows:
+Survey and public opinion research often categorizes interview attempts for
+a survey according to a set of outcome codes as follows:
 \itemize{
 \item I  = Complete interview
 \item P  = Partial interview
 \item R  = Refusal and break-off
 \item NC = Non-contact
-\item O  = Other
-\item UH = Unknown if household/occupied housing unit
-\item UO = Unknown, other
-\item NE = Known ineligible
+\item O  = Other eligible non-interview (2.30, 2.90)
+\item UH = Unknown if household/occupied housing unit (3.10)
+\item UR = Unknown if sampled unit is eligible/housing unit contains an eligible
+respondent (3.20)
+\item UO = Unknown, other (3.90)
+\item NE = Not eligible (4.0)
 }
+
+\code{UR} is the 10th-edition aggregate symbol for 3.20, which the 9th edition
+included under \code{UO}. Legacy \code{UO} inputs remain supported. With a scalar \code{e},
+moving a 3.20 case from \code{UO} to \code{UR} does not alter a rate. With
+category-specific estimates it can, so new 3.20 cases should be coded \code{UR}
+for standards conformance.
 
 These high-level classes are used to calculate outcome rates that
 provide some measure of quality over the fieldwork. These outcome rates
 are defined here as follows:
 
+The formulas below show the traditional scalar form \code{e(UH + UR + UO)}. If
+\code{e} is supplied by category, that term is evaluated as
+\code{e["UH"] * UH + e["UR"] * UR + e["UO"] * UO}. Each value is the
+conditional probability that a case in that unknown category is ultimately
+eligible for the survey, following the companion guidance in
+\insertCite{aapor_e_2025}{outcomerate}. Calculate \code{e} separately for each
+frame. One vector applies to the cases in one call; combining frames requires
+a scientifically justified aggregation. Other design components, modes, or
+phases may also require separate estimates when their mechanisms differ.
+Document the scientific basis for every estimate.
+
 \strong{AAPOR Response Rate}
 
-The proportion of your intended sample that participate in the survey.
+The proportion of sampled cases that yield a complete or partial interview,
+depending on the selected definition.
 \itemize{
-\item RR1 = I / ((I + P) + (R + NC + O) + (UH + UO))
-\item RR2 = (I + P) / ((I + P) + (R + NC + O) + (UH + UO))
-\item RR3 = I / ((I + P) + (R + NC + O) + e(UH + UO))
-\item RR4 = (I + P) / ((I + P) + (R + NC + O) + e(UH + UO))
+\item RR1 = I / ((I + P) + (R + NC + O) + (UH + UR + UO))
+\item RR2 = (I + P) / ((I + P) + (R + NC + O) + (UH + UR + UO))
+\item RR3 = I / ((I + P) + (R + NC + O) + e(UH + UR + UO))
+\item RR4 = (I + P) / ((I + P) + (R + NC + O) + e(UH + UR + UO))
 \item RR5 = I / ((I + P) + (R + NC + O))
 \item RR6 = (I + P) / ((I + P) + (R + NC + O))
 }
 
+RR5 and RR6 are appropriate only when no unknown cases are eligible or no
+cases have unknown eligibility.
+
 \strong{AAPOR Cooperation Rates}
 
-The proportion of contacted respondents who participate in the survey.
+The proportion of all interviewed cases among eligible units ever contacted.
+These printed formulas are AAPOR's household-level rates.
 \itemize{
 \item COOP1 = I / ((I + P) + R + O)
 \item COOP2 = (I + P) / ((I + P) + R + O)
@@ -74,18 +116,23 @@ The proportion of contacted respondents who participate in the survey.
 
 The proportion of the sample that refuses to participate in the survey.
 \itemize{
-\item REF1 = R / ((I + P) + (R + NC + O) + (UH + UO))
-\item REF2 = R / ((I + P) + (R + NC + O) + e(UH + UO))
+\item REF1 = R / ((I + P) + (R + NC + O) + (UH + UR + UO))
+\item REF2 = R / ((I + P) + (R + NC + O) + e(UH + UR + UO))
 \item REF3 = R / ((I + P) + (R + NC + O))
 }
 
+As with RR5 and RR6, excluding unknown cases from REF3 must be justified by
+the study's actual eligibility situation.
+
 \strong{AAPOR Contact Rates}
 
-The proportion of the sample that is successfully contacted for
-an interview (whether they chose to participate or not).
+The proportion of cases in which a responsible member of the housing unit is
+reached. These printed formulas are AAPOR's household-level rates.
 \itemize{
-\item CON1 = ((I + P) + (R + O)) / ((I + P) + (R + NC + O) + (UH+ UO))
-\item CON2 = ((I + P) + (R + O)) / ((I + P) + (R + NC + O) + e(UH + UO))
+\item CON1 = ((I + P) + (R + O)) / ((I + P) + (R + NC + O) +
+(UH + UR + UO))
+\item CON2 = ((I + P) + (R + O)) / ((I + P) + (R + NC + O) +
+e(UH + UR + UO))
 \item CON3 = ((I + P) + (R + O)) / ((I + P) + (R + NC + O))
 }
 
@@ -97,8 +144,10 @@ The location rate is not defined in AAPOR's Standards, but can be found in
 \insertCite{vdk}{outcomerate}. Note: depending on how the
 located cases are encoded, this may or may not be the correct formula.
 \itemize{
-\item LOC1 = ((I + P) + (R + O + NC)) / ((I + P) + (R + NC + O) + (UH + UO))
-\item LOC2 = ((I + P) + (R + O + NC)) / ((I + P) + (R + NC + O) + e(UH + UO))
+\item LOC1 = ((I + P) + (R + O + NC)) / ((I + P) + (R + NC + O) +
+(UH + UR + UO))
+\item LOC2 = ((I + P) + (R + O + NC)) / ((I + P) + (R + NC + O) +
+e(UH + UR + UO))
 }
 }
 \examples{
@@ -111,22 +160,28 @@ library(outcomerate)
 # P  = Partial interview
 # R  = Refusal and break-off
 # NC = Non-contact
-# O  = Other
-# UH = Unknown if household/occupied housing unit
-# UO = Unknown, other
-# NE = Known ineligible
+# O  = Other eligible non-interview (2.30, 2.90)
+# UH = Unknown if household/occupied housing unit (3.10)
+# UR = Unknown if sampled unit is eligible/housing unit contains an eligible
+#      respondent (3.20)
+# UO = Unknown, other (3.90)
+# NE = Not eligible (4.0)
 x <- c("I", "P", "I", "NC", "UH", "I", "R", "NE",
-      "UO", "I", "O", "P", "I")
+      "UR", "UO", "I", "O", "P", "I")
 
 # calculate all rates
 elr <- eligibility_rate(x)
 outcomerate(x, e = elr)
 
+# use separate eligibility estimates for each unknown category
+e_by_class <- c(UH = 0.4, UR = 0.7, UO = 0.2)
+outcomerate(x, e = e_by_class, rate = c("RR3", "REF2", "CON2"))
+
 # return only one rate
 outcomerate(x, rate = "COOP1")
 
-# calculate weighted rates
-w <- runif(length(x), 0, 5)
+# calculate weighted rates using illustrative base weights
+w <- seq(0.5, 1.8, length.out = length(x))
 outcomerate(x, e = elr, weight = w)
 
 # alternatively, provide input as counts
@@ -134,5 +189,5 @@ freq <- c(I = 6, P = 2, NC = 3, R = 1)
 outcomerate(freq, e = elr)
 }
 \references{
-\insertAllCited \insertRef{aapor}{outcomerate}
+\insertAllCited
 }

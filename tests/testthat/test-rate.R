@@ -1,6 +1,3 @@
-context("Outcome Rates")
-
-
 # vector with all possible classifications
 x1 <- c(
   "I", "P", "I", "NC", "UH", "I", "R", "UO",
@@ -46,15 +43,17 @@ test_that("Weighted rates produce known expected results", {
     expected = c(RR2w = 19.3 / 37.2)
   )
 
-  # '0' weights
+  # individual zero weights are valid (for example, in two-phase designs)
   w2[5] <- 0
-  expect_warning(outcomerate(x1, weight = w2), regexp = "zero")
+  expect_warning(outcomerate(x1, weight = w2), NA)
 })
 
 test_that("Should return numerator and denominator if asked", {
-  res <- structure(c(12, 15), .Dim = 1:2, .Dimnames = structure(list(
-    rate = "CON1", side = c("NUM", "DEN")
-  ), .Names = c("rate", "side")))
+  res <- structure(
+    c(12, 15),
+    dim = 1:2,
+    dimnames = list(rate = "CON1", side = c("NUM", "DEN"))
+  )
   expect_equal(outcomerate(x1, rate = "CON1", return_nd = TRUE),
     expected = res
   )

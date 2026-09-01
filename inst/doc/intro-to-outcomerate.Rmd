@@ -6,8 +6,8 @@ output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Intro to outcomerate}
   %\VignetteEncoding{UTF-8}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteDepends{dplyr, ggplot2, tidyr, knitr, stringr}
+  %\VignetteEngine{knitr::rmarkdown}
 editor_options: 
   chunk_output_type: console
 ---
@@ -19,6 +19,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+options(dplyr.summarise.inform = FALSE)
 ```
 
 
@@ -44,7 +45,13 @@ kable(count(middleearth, code, outcome))
 ```
 
 ```{r include = FALSE}
-attach(as.list(table(middleearth$code)))
+disposition_counts <- table(middleearth$code)
+I <- disposition_counts[["I"]]
+P <- disposition_counts[["P"]]
+R <- disposition_counts[["R"]]
+NC <- disposition_counts[["NC"]]
+O <- disposition_counts[["O"]]
+UO <- disposition_counts[["UO"]]
 ```
 
 
@@ -52,20 +59,20 @@ It is common for survey practitioners to report a number of outcome rates. These
 
 How might we go about calculating this?
 
-When we inspect our disposition codes, it become apparent that there could be several ways to do this. For example, you may start by using the total number of complete cases (`r I`) and diving this by the number of observations in the data, `r I` / `r nrow(middleearth)` = `r round(I / nrow(middleearth), 2)`. But what about partially completed interviews? If you include those, you would get a rate of  (`r I` + `r P`) / `r nrow(middleearth)` =  `r round((I + P) / nrow(middleearth), 2)`.
+When we inspect our disposition codes, it becomes apparent that there could be several ways to do this. For example, you may start by using the total number of complete cases (`r I`) and dividing this by the number of observations in the data, `r I` / `r nrow(middleearth)` = `r round(I / nrow(middleearth), 2)`. But what about partially completed interviews? If you include those, you would get a rate of  (`r I` + `r P`) / `r nrow(middleearth)` =  `r round((I + P) / nrow(middleearth), 2)`.
 
-It turns out that there are a lot of ways to calculate such outcome rates. Unless we specify exactly what we mean by "response rate", it is easy for claims regarding survey quality to become opaque, lacking comparability with other surveys. For this reason, the American Association for Public Opinion Research (AAPOR) has published a [set of standardized definitions](https://www.aapor.org/Standards-Ethics/Standard-Definitions-(1).aspx) for practitioners. The guide has no fewer than 6 different variants of the 'response rate.' In the our example, the rates we calculated would match to AAPOR's "Response Rate 1" and "Response Rate 2":
+It turns out that there are a lot of ways to calculate such outcome rates. Unless we specify exactly what we mean by "response rate", it is easy for claims regarding survey quality to become opaque, lacking comparability with other surveys. For this reason, the American Association for Public Opinion Research (AAPOR) has published a [set of standardized definitions](https://aapor.org/wp-content/uploads/2024/03/Standards-Definitions-10th-edition.pdf) for practitioners. The guide has no fewer than 6 different variants of the 'response rate.' In our example, the rates match AAPOR's "Response Rate 1" and "Response Rate 2":
 
 
 $$
-\textrm{RR1} = \frac{\textrm{I}}{\textrm{(I + P) + R + O + NC + (UO + UH)}} 
-= \frac{`r I`}{(`r I` + `r P`) + `r R` + `r O` + `r NC` + (`r UO` + 0)} 
+\textrm{RR1} = \frac{\textrm{I}}{\textrm{(I + P) + R + O + NC + (UH + UR + UO)}}
+= \frac{`r I`}{(`r I` + `r P`) + `r R` + `r O` + `r NC` + (0 + 0 + `r UO`)}
 = `r round(outcomerate(middleearth$code, rate = "RR1"), 2)`
 $$
 
 $$
-\textrm{RR2} = \frac{\textrm{(I + P)}}{\textrm{(I + P) + R + O + NC + (UO + UH)}} 
-= \frac{(`r I` + `r P`)}{(`r I` + `r P`) + `r R` + `r O` + `r NC` + (`r UO` + 0)} 
+\textrm{RR2} = \frac{\textrm{(I + P)}}{\textrm{(I + P) + R + O + NC + (UH + UR + UO)}}
+= \frac{(`r I` + `r P`)}{(`r I` + `r P`) + `r R` + `r O` + `r NC` + (0 + 0 + `r UO`)}
 = `r round(outcomerate(middleearth$code, rate = "RR2"), 2)`
 $$
 
@@ -73,13 +80,37 @@ What's more, the guide has multiple definitions for contact rates, refusal rates
 
 
 ```{r}
-disp_counts <- c(I = 760, P = 339, R = 59, NC = 288, O = 1, UO = 173, NE = 71) 
+disp_counts <- c(I = 760, P = 339, R = 59, NC = 288, O = 1,
+                 UH = 40, UR = 60, UO = 73, NE = 71)
 
 e <- eligibility_rate(disp_counts)
 outcomerate(disp_counts, e = e)
 ```
 
-Each of these rates has a precise definition (see `?outcomerate` for details). As we can see, `RR1` and `RR2` match our earlier calculations. In the example, I needed to specify the parameter `e`, the estimated proportion of unknown cases unknowns (`UO`) that were eligible. The `eligibility_rate()` offers a default way to calculate this, but others may be appropriate.
+The output also includes `LOC1` and `LOC2`, which are package extensions rather
+than AAPOR-defined rates.
+
+Each of these rates has a precise definition (see `?outcomerate` for details). As we can see, `RR1` and `RR2` match our earlier calculations. In the example, I needed to specify the parameter `e`, the estimated proportion of cases of unknown eligibility (`UH`, `UR`, and `UO`) that were eligible. The `eligibility_rate()` offers a default scalar estimate, but others may be appropriate.
+
+When evidence supports different eligibility probabilities for the unknown
+categories, supply a named vector. For example:
+
+```{r category-specific-e}
+e_by_class <- c(UH = 0.35, UR = 0.70, UO = 0.50)
+outcomerate(
+  disp_counts,
+  e = e_by_class,
+  rate = c("RR3", "RR4", "REF2", "CON2")
+)
+```
+
+Each value is the conditional probability that a case in that category is
+eligible. For `UH`, this must be the full probability of survey eligibility,
+not merely the probability that the unit is an occupied household. A category
+may be omitted only when its aggregate count is zero (after weighting, when
+weights are supplied). Calculate `e` separately for each sampling frame. The
+basis for every estimate should be documented and should not be selected to
+inflate a response rate.
 
 If we had wanted just to return the two rates from above, we could specify this:
 
@@ -118,7 +149,7 @@ middleearth %>%
   summarise(n     = n(),
             Nhat  = sum(svywt),
             rates = list(get_rates(code))) %>%
-  unnest() %>%
+  unnest(cols = c(rates)) %>%
   kable(digits = 2, caption = "Outcome Rates by Race")
 ```
 
@@ -134,7 +165,7 @@ middleearth %>%
   summarise(n     = n(),
             Nhat  = sum(svywt),
             rates = list(get_rates(code, weight = svywt))) %>%
-  unnest() %>%
+  unnest(cols = c(rates)) %>%
   kable(digits = 2, caption = "Weighted Outcome Rates by Region")
 ```
 
@@ -147,7 +178,7 @@ middleearth %>%
   summarise(n     = n(),
             Nhat  = sum(svywt),
             rates = list(get_rates(code))) %>%
-  unnest() %>%
+  unnest(cols = c(rates)) %>%
   kable(digits = 2, caption = "Unweighted Outcome Rates by Region")
 ```
 
@@ -166,7 +197,7 @@ library(stringr)
 middleearth %>%
   group_by(day) %>%
   summarise(rates = list(get_rates(code))) %>%
-  unnest() %>%
+  unnest(cols = c(rates)) %>%
   gather(rate, value, -day) %>%
   mutate(type = str_sub(rate, start = -9, end = -2)) %>%
   ggplot(aes(x = day, y = value, colour = rate)) +
@@ -180,14 +211,18 @@ In this example, we can see that the contact rate (`CON`) and response rate (`RR
 
 ## Variance Estimation
 
-To estimate the errors from estimates generated by `outcomerate()`, the simplest approach is to use the normal appromation. Since outcome rates are nothing more than proportions (or nearly so), their standard error is given by $SE(p) = \sqrt{(p(1-p))/n}$.
+To estimate the errors from estimates generated by `outcomerate()`, the simplest approach is to use the normal approximation. Since outcome rates are nothing more than proportions (or nearly so), their standard error is given by $SE(p) = \sqrt{(p(1-p))/n}$.
 
 ```{r}
 # first, calculate the outcome rates
 (res <- outcomerate(middleearth$code))
 
 # estimate standard errors using the Normal approximation for proportions 
-se <- sapply(res, function(p) sqrt((p * (1 - p)) / nrow(middleearth)))
+se <- vapply(
+  res,
+  function(p) sqrt((p * (1 - p)) / nrow(middleearth)),
+  numeric(1)
+)
 ```
 
 With the standard error in hand, we can then construct frequentist confidence intervals:

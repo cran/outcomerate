@@ -1,8 +1,31 @@
+# outcomerate 1.1.0
+
+* Updated the outcome-rate formulas, documentation, and bibliography to the
+  AAPOR *Standard Definitions*, 10th edition (2023).
+* Added support for `UR`, the 10th edition's new aggregate symbol for cases
+  where it is unknown whether the sampled unit is eligible or the housing unit
+  contains an eligible respondent (code 3.20). The underlying 3.20 disposition
+  is not new: the 9th edition included it in `UO`. Existing `UO` inputs and
+  results remain supported, while newly coded 3.20 cases should use `UR`.
+* Aligned weighted-rate guidance with the 10th edition: individual zero weights
+  are accepted for two-phase designs, while invalid and all-zero weight vectors
+  are rejected. Already-aggregated inputs now reject `weight` instead of
+  silently returning results labeled as weighted.
+* `outcomerate()` now accepts category-specific eligibility estimates such as
+  `e = c(UH = 0.4, UR = 0.7, UO = 0.2)`. Existing scalar `e` inputs retain
+  their original behavior.
+* Aggregate disposition counts now reject duplicate names rather than silently
+  discarding later values during canonical ordering.
+* Minor updates to vignettes to reflect changes in the tidyverse.
+* Updated legacy citation, documentation, and test attribute syntax for current
+  R and CRAN checks.
+
 # outcomerate 1.0.1
 
 #### Documentation
 
 * Added CITATION details to the package
+* Added documentation as `pkgdown` site
 
 # outcomerate 1.0.0
 
@@ -15,7 +38,7 @@
 * Refactoring of code based on ROpenSci peer review feedback.
 * Added S3 method for factors.
 * Addition of many more unit tests.
-* Addtional of more helpful error messages.
+* Additional of more helpful error messages.
 
 #### Breaking Changes
 
